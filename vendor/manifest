@@ -294,10 +294,10 @@
 		},
 		{
 			"importpath": "github.com/prometheus/client_golang/api/prometheus",
-			"repository": "https://github.com/prometheus/client_golang",
+			"repository": "https://github.com/weaveworks/client_golang",
 			"vcs": "git",
-			"revision": "a5060f1eaab721946b185b2de468ff83ea5b89cb",
-			"branch": "master",
+			"revision": "18d6715b27cdf0240231ba3bf3798294898ffe26",
+			"branch": "middleware",
 			"path": "/api/prometheus",
 			"notests": true
 		},
