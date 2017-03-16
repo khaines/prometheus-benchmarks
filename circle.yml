@@ -5,7 +5,6 @@ machine:
 test:
   override:
     - make RM= lint -p
-    - make RM= test -p
     - make RM=
 
 deployment:
