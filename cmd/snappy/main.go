@@ -7,5 +7,6 @@ import (
 )
 
 func main() {
-	snappy.NewWriter(os.Stdout).Write([]byte("hello world"))
+	compressed := snappy.Encode(nil, []byte("hello world"))
+	os.Stdout.Write(compressed)
 }
