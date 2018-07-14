@@ -3,7 +3,7 @@
 
 # Boiler plate for bulding Docker containers.
 # All this must go at top of file I'm afraid.
-IMAGE_PREFIX := quay.io/weaveworks/
+IMAGE_PREFIX ?= quay.io/weaveworks/
 IMAGE_TAG := $(shell ./tools/image-tag)
 UPTODATE := .uptodate
 
@@ -96,4 +96,17 @@ clean:
 	rm -rf $(UPTODATE_FILES) $(EXES) $(PROTO_GOS)
 	go clean ./...
 
+save-images:
+	@mkdir -p images
+	for image_name in $(IMAGE_NAMES); do \
+		if ! echo $$image_name | grep build; then \
+			docker save $$image_name:$(IMAGE_TAG) -o images/$$(echo $$image_name | tr "/" _):$(IMAGE_TAG); \
+		fi \
+	done
 
+load-images:
+	for image_name in $(IMAGE_NAMES); do \
+		if ! echo $$image_name | grep build; then \
+			docker load -i images/$$(echo $$image_name | tr "/" _):$(IMAGE_TAG); \
+		fi \
+	done
