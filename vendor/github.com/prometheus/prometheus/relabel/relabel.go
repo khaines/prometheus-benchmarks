@@ -87,19 +87,19 @@ func relabel(labels model.LabelSet, cfg *config.RelabelConfig) model.LabelSet {
 		}
 		labels = out
 	case config.RelabelLabelDrop:
-		for ln, _ := range labels {
+		for ln := range labels {
 			if cfg.Regex.MatchString(string(ln)) {
 				delete(labels, ln)
 			}
 		}
 	case config.RelabelLabelKeep:
-		for ln, _ := range labels {
+		for ln := range labels {
 			if !cfg.Regex.MatchString(string(ln)) {
 				delete(labels, ln)
 			}
 		}
 	default:
-		panic(fmt.Errorf("retrieval.relabel: unknown relabel action type %q", cfg.Action))
+		panic(fmt.Errorf("relabel: unknown relabel action type %q", cfg.Action))
 	}
 	return labels
 }
