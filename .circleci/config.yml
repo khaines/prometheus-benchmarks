@@ -1,0 +1,90 @@
+version: 2
+
+# https://circleci.com/blog/circleci-hacks-reuse-yaml-in-your-circleci-config-with-yaml/
+defaults: &defaults
+  docker:
+    - image: tomwilkie/bench-build:master-06a01ff-WIP
+  working_directory: /go/src/github.com/weaveworks-experiments/prometheus-benchmarks
+
+workflows:
+  version: 2
+  test-build-deploy:
+    jobs:
+    - lint
+    - build
+    - deploy:
+        requires:
+        - build
+        - lint
+        filters:
+          branches:
+            only: master
+
+jobs:
+  lint:
+    <<: *defaults
+    steps:
+    - checkout
+    - run:
+        name: Lint
+        command: |
+          touch bench-build/.uptodate
+          make BUILD_IN_CONTAINER=false lint
+
+  build:
+    <<: *defaults
+    steps:
+    - checkout
+    - setup_remote_docker
+
+    - run:
+        name: Install Docker client
+        command: |
+          set -x
+          VER="17.03.0-ce"
+          curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
+          tar -xz -C /tmp -f /tmp/docker-$VER.tgz
+          mv /tmp/docker/* /usr/bin
+
+    - run:
+        name: Build
+        command: |
+          touch bench-build/.uptodate
+          make BUILD_IN_CONTAINER=false
+
+    - run:
+        name: Save Images
+        command: make BUILD_IN_CONTAINER=false save-images
+
+    - save_cache:
+        key: v1-prometheus-benchmarks-{{ .Branch }}-{{ .Revision }}
+        paths:
+        - images/
+
+  deploy:
+    <<: *defaults
+    steps:
+    - checkout
+    - setup_remote_docker
+
+    - run:
+        name: Install Docker client
+        command: |
+          set -x
+          VER="17.03.0-ce"
+          curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
+          tar -xz -C /tmp -f /tmp/docker-$VER.tgz
+          mv /tmp/docker/* /usr/bin
+
+    - restore_cache:
+        key: v1-prometheus-benchmarks-{{ .Branch }}-{{ .Revision }}
+
+    - run:
+        name: Load Images
+        command: make BUILD_IN_CONTAINER=false load-images
+
+    - run:
+        name: Deploy
+        command: |
+          docker login -e "$DOCKER_REGISTRY_EMAIL" -u "$DOCKER_REGISTRY_USER" -p "$DOCKER_REGISTRY_PASSWORD"
+          ./tools/push-images $NOQUAY

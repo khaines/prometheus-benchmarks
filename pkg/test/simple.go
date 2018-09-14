@@ -1,23 +1,19 @@
 package test
 
 import (
-	"flag"
+	"context"
 	"fmt"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
-	api "github.com/prometheus/client_golang/api/prometheus"
+	"github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"golang.org/x/net/context"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
+	namespace = "prometheus"
 	subsystem = "test_exporter"
-)
-
-var (
-	namespace = flag.String("namespace", "prometheus", "Namespace of metrics.")
 )
 
 type simpleTestCase struct {
@@ -31,7 +27,7 @@ func NewSimpleTestCase(name string, f func(time.Time) float64) Case {
 	return &simpleTestCase{
 		GaugeFunc: prometheus.NewGaugeFunc(
 			prometheus.GaugeOpts{
-				Namespace: *namespace,
+				Namespace: namespace,
 				Subsystem: subsystem,
 				Name:      name,
 				Help:      name,
@@ -49,9 +45,9 @@ func (tc *simpleTestCase) ExpectedValueAt(t time.Time) float64 {
 	return tc.expectedValueAt(t)
 }
 
-func (tc *simpleTestCase) Query(ctx context.Context, client api.QueryAPI, start time.Time, duration time.Duration) ([]model.SamplePair, error) {
-	metricName := prometheus.BuildFQName(*namespace, subsystem, tc.name)
-	query := metricName + fmt.Sprintf("[%dm]", duration/time.Minute)
+func (tc *simpleTestCase) Query(ctx context.Context, client v1.API, selectors string, start time.Time, duration time.Duration) ([]model.SamplePair, error) {
+	metricName := prometheus.BuildFQName(namespace, subsystem, tc.name)
+	query := fmt.Sprintf("%s{%s}[%dm]", metricName, selectors, duration/time.Minute)
 	log.Println(query, "@", start)
 
 	value, err := client.Query(ctx, query, start)

@@ -3,21 +3,46 @@ package middleware
 import (
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+
+	"github.com/weaveworks/common/logging"
 )
 
 const gRPC = "gRPC"
 
-// ServerLoggingInterceptor logs gRPC requests, errors and latency.
-var ServerLoggingInterceptor = func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+// GRPCServerLog logs grpc requests, errors, and latency.
+type GRPCServerLog struct {
+	// WithRequest will log the entire request rather than just the error
+	WithRequest bool
+}
+
+// UnaryServerInterceptor returns an interceptor that logs gRPC requests
+func (s GRPCServerLog) UnaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	begin := time.Now()
 	resp, err := handler(ctx, req)
+	entry := logging.With(ctx).WithFields(log.Fields{"method": info.FullMethod, "duration": time.Since(begin)})
 	if err != nil {
-		log.Warnf("%s %s (%v) %s", gRPC, info.FullMethod, err, time.Since(begin))
+		if s.WithRequest {
+			entry = entry.WithField("request", req)
+		}
+		entry.WithError(err).Warn(gRPC)
 	} else {
-		log.Debugf("%s %s (success) %s", gRPC, info.FullMethod, time.Since(begin))
+		entry.Debugf("%s (success)", gRPC)
 	}
 	return resp, err
+}
+
+// StreamServerInterceptor returns an interceptor that logs gRPC requests
+func (s GRPCServerLog) StreamServerInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	begin := time.Now()
+	err := handler(srv, ss)
+	entry := logging.With(ss.Context()).WithFields(log.Fields{"method": info.FullMethod, "duration": time.Since(begin)})
+	if err != nil {
+		entry.WithError(err).Warn(gRPC)
+	} else {
+		entry.Debugf("%s (success)", gRPC)
+	}
+	return err
 }
